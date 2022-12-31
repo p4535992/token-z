@@ -9,8 +9,8 @@
         },
         "settings": {
           "enablesync": {
-            "name": "",
-            "hint": ""
+            "name": "Enable Z Synchronization",
+            "hint": "Synchronize the z-index (and elevation) of tokens across clients."
           }
         }
     }

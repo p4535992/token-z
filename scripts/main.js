@@ -1,23 +1,23 @@
-Object.defineProperty(TokenDocument.prototype, "sort" , {
-  get: function(){
-    if(!(this instanceof TokenDocument)) {
-      return 0;
-    }
-    const zIndexOverride = this["token-z"]?.zIndexOverride;
-    if(typeof zIndexOverride === "number") {
-      return zIndexOverride;
-    }
-    const flag = this.flags["token-z"]?.zIndex ?? 0;
-    const controlled = this._object?.controlled ? 1 : 0;
-    const defeated = this.actor?.effects?.find(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED) ? -1000 : 0;
-    return 2 - this.width - this.height + controlled + flag + defeated;
-  },
-  set: function (value) {}
-})
+// Object.defineProperty(TokenDocument.prototype, "sort" , {
+//   get: function(){
+//     if(!(this instanceof TokenDocument)) {
+//       return 0;
+//     }
+//     const zIndexOverride = this["token-z"]?.zIndexOverride;
+//     if(typeof zIndexOverride === "number") {
+//       return zIndexOverride;
+//     }
+//     const flag = this.flags["token-z"]?.zIndex ?? 0;
+//     const controlled = this._object?.controlled ? 1 : 0;
+//     const defeated = this.actor?.effects?.find(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED) ? -1000 : 0;
+//     return 2 - this.width - this.height + controlled + flag + defeated;
+//   },
+//   set: function (value) {}
+// })
 
 Hooks.on("controlToken", (token, controlled) => {
   if(controlled) {
-    token.mesh.zIndex += 1;
+    // token.mesh.zIndex += 1;
     if(game.settings.get("token-z", "enablesync")) {
       let tokenId = token.id;
       let sceneId = game.scenes.viewed.id;
@@ -73,9 +73,36 @@ Hooks.once("setup", () => {
   function pushTokenBack(event) {
     const hoveredToken = canvas.tokens.hover;
     if (hoveredToken && !event.repeat) {
-      const localStorage = (hoveredToken.document["token-z"] ??= {});
-      localStorage.zIndexOverride = Math.min(-2000, ...canvas.tokens.placeables.map(t => t.document.sort)) - 1;
-      hoveredToken.mesh.zIndex = localStorage.zIndexOverride;
+
+      // const localStorage = (hoveredToken.document["token-z"] ??= {});
+      // localStorage.zIndexOverride = Math.min(-2000, ...canvas.tokens.placeables.map(t => t.document.sort)) - 1;
+      // hoveredToken.mesh.zIndex = localStorage.zIndexOverride;
+
+      const tokenStack = findTokensWithinBoundaries(hoveredToken);
+      if (!tokenStack || tokenStack.length <= 0) {
+        return;
+      }
+
+      let position = 0;
+      for (const x of canvas.tokens.placeables) {
+         if (x.id === hoveredToken.id) {
+          break;
+         }
+         position++;
+      }
+      if (position < canvas.tokens.placeables.length){
+        // found the child, push it to element 0
+        canvas.tokens.placeables.splice(position,1);
+        canvas.tokens.placeables.unshift(hoveredToken);
+
+        const hud = hoveredToken.layer.hud;
+        if ( hud ) {
+          hud.clear();
+        }
+        // Add or remove the Placeable Object from the currently controlled set
+        tokenStack[0].control({releaseOthers: true});
+      }
+  
     }
   }
 });
@@ -85,14 +112,16 @@ Hooks.once('ready', async function () {
     let [socketData] = args;
     let tokenId = socketData.tokenId;
     let sceneId = socketData.sceneId;
+    let elevation = socketData.elevation;
+    let sort = socketData.sort;
 
     if (game.scenes.viewed.id == sceneId){
         canvas.tokens.placeables.forEach(token=>{
             if (token.id==tokenId){
-                token.document.sort = socketData.sort;
+                token.document.sort = sort;
             } else {
-                if (token.document.elevation == socketData.elevation) {
-                    if (socketData.sort == 1) {
+                if (token.document.elevation == elevation) {
+                    if (sort == 1) {
                       token.document.sort = 0;
                     }
                 }
@@ -101,6 +130,8 @@ Hooks.once('ready', async function () {
     }
   });
 });
+
+
 
 function getElevationPlaceableObject(placeableObject) {
 	let base = placeableObject;
@@ -121,4 +152,28 @@ function getElevationPlaceableObject(placeableObject) {
   } else {
     return base.elevation ?? 0;
   }
+}
+
+//- finds tokens with co-ordinates within the boundaries of the given token
+//-array will be ordered from top to bottom. Top being index 0
+function findTokensWithinBoundaries(hoveredToken) {
+  let tokenStack = [];
+	if (hoveredToken) {
+		//@ts-ignore
+		const tokensToCheck = [...canvas.tokens?.placeables].filter((token) => token.mesh.visible);
+		tokenStack = tokensToCheck.filter(
+			(t) =>
+				t.x + t.w > hoveredToken.x &&
+				t.y + t.h > hoveredToken.y &&
+				t.x < hoveredToken.x + hoveredToken.w &&
+				t.y < hoveredToken.y + hoveredToken.h
+				// t.id !== hoveredToken.id
+
+			// position.x >= token.x &&
+			// position.x < token.x + token.document.width * canvas.grid.size &&
+			// position.y >= token.y &&
+			// position.y < token.y + token.document.height * canvas.grid.size
+		);
+	}
+	return tokenStack;
 }
