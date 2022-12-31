@@ -100,7 +100,24 @@ Hooks.once("setup", () => {
           hud.clear();
         }
         // Add or remove the Placeable Object from the currently controlled set
-        tokenStack[0].control({releaseOthers: true});
+        tokenStack[tokenStack.length-1].control({releaseOthers: true});
+        tokenStack[tokenStack.length-1].release();
+        // for ( let o of tokenStack[tokenStack.length-1].layer.controlled ) {
+        //   if ( o !== tokenStack[tokenStack.length-1] ) {
+        //     o.release();
+        //   }
+        // }
+        // // Trigger follow-up events and fire an on-control Hook
+        // tokenStack[tokenStack.length-1].document.sort += 1;
+        // tokenStack[tokenStack.length-1].refresh();
+        // canvas.perception.update({
+        //   initializeVision: true,
+        //   forceUpdateFog: true,
+        //   refreshLighting: true,
+        //   refreshSounds: true,
+        //   refreshTiles: true
+        // }, true);
+        // canvas.triggerPendingOperations();
       }
   
     }
@@ -166,8 +183,8 @@ function findTokensWithinBoundaries(hoveredToken) {
 				t.x + t.w > hoveredToken.x &&
 				t.y + t.h > hoveredToken.y &&
 				t.x < hoveredToken.x + hoveredToken.w &&
-				t.y < hoveredToken.y + hoveredToken.h
-				// t.id !== hoveredToken.id
+				t.y < hoveredToken.y + hoveredToken.h &&
+				t.id !== hoveredToken.id
 
 			// position.x >= token.x &&
 			// position.x < token.x + token.document.width * canvas.grid.size &&
